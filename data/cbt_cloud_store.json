@@ -1,0 +1,216 @@
+{
+  "quizzes": [
+    {
+      "id": "quiz-pas-rpl-01",
+      "title": "Penilaian Akhir Semester (PAS) - Pemrograman & Keamanan Jaringan",
+      "subject": "Informatika & Rekayasa Perangkat Lunak",
+      "targetClasses": [
+        "X RPL 1",
+        "X RPL 2",
+        "XI TKJ 1",
+        "Semua Kelas"
+      ],
+      "description": "Ujian komprehensif menguji dasar algoritma, struktur data, arsitektur jaringan, serta prinsip keamanan sistem. Patuhi tata tertib kejujuran!",
+      "durationMinutes": 45,
+      "startTime": "2026-11-05T05:34:52.392Z",
+      "endTime": "2026-11-08T06:34:52.392Z",
+      "token": "SMK2026",
+      "shuffleQuestions": false,
+      "shuffleOptions": true,
+      "showScoreAfterSubmit": true,
+      "maxViolations": 3,
+      "status": "active",
+      "createdAt": "2026-11-05T06:34:52.392Z",
+      "questions": [
+        {
+          "id": "q1-mc",
+          "quizId": "quiz-pas-rpl-01",
+          "type": "multiple_choice",
+          "text": "Manakah di antara tipe data berikut yang secara khusus digunakan untuk menyimpan bilangan bulat tanpa pecahan dalam sebagian besar bahasa pemrograman modern (seperti Java, C++, TypeScript)?",
+          "points": 20,
+          "options": [
+            {
+              "id": "opt-a",
+              "text": "float"
+            },
+            {
+              "id": "opt-b",
+              "text": "integer (int)"
+            },
+            {
+              "id": "opt-c",
+              "text": "boolean"
+            },
+            {
+              "id": "opt-d",
+              "text": "char"
+            }
+          ],
+          "correctAnswer": "opt-b",
+          "explanation": "Integer (int) merupakan tipe data primitif untuk merepresentasikan nilai bilangan bulat tanpa komponen desimal.",
+          "subject": "Dasar Pemrograman",
+          "difficulty": "mudah"
+        },
+        {
+          "id": "q2-complex",
+          "quizId": "quiz-pas-rpl-01",
+          "type": "complex_multiple_choice",
+          "text": "Perhatikan praktik keamanan siber berikut. Manakah 2 (DUA) langkah yang paling efektif untuk mencegah serangan Brute Force pada halaman login admin web sekolah? (Pilih 2 jawaban yang benar)",
+          "points": 20,
+          "options": [
+            {
+              "id": "opt-ca",
+              "text": "Menerapkan Rate Limiting (pembatasan percobaan login berturut-turut)"
+            },
+            {
+              "id": "opt-cb",
+              "text": "Menggunakan HTTP biasa tanpa sertifikat SSL/TLS"
+            },
+            {
+              "id": "opt-cc",
+              "text": "Mengaktifkan Multi-Factor Authentication (MFA / 2FA) berbasis OTP/Authenticator"
+            },
+            {
+              "id": "opt-cd",
+              "text": "Menyimpan password dalam database secara plaintext agar mudah dibaca"
+            }
+          ],
+          "correctAnswer": [
+            "opt-ca",
+            "opt-cc"
+          ],
+          "explanation": "Rate limiting membatasi frekuensi bot menebak kredensial, sementara MFA/2FA mencegah akses meskipun password diketahui.",
+          "subject": "Keamanan Siber",
+          "difficulty": "sedang"
+        },
+        {
+          "id": "q3-matching",
+          "quizId": "quiz-pas-rpl-01",
+          "type": "matching",
+          "text": "Pasangkanlah lapisan OSI Model (Kiri) dengan fungsi dan protokol utamanya (Kanan) secara tepat!",
+          "points": 20,
+          "matchingPairs": [
+            {
+              "id": "pair-1",
+              "premise": "Application Layer",
+              "response": "HTTP, DNS, SMTP - Antarmuka langsung ke aplikasi pengguna"
+            },
+            {
+              "id": "pair-2",
+              "premise": "Transport Layer",
+              "response": "TCP / UDP - Segmentasi & keandalan transmisi end-to-end"
+            },
+            {
+              "id": "pair-3",
+              "premise": "Network Layer",
+              "response": "IP Address & Routing - Penentuan rute antar jaringan paket"
+            },
+            {
+              "id": "pair-4",
+              "premise": "Data Link Layer",
+              "response": "MAC Address & Frame - Deteksi error dan transfer data lokal hop-to-hop"
+            }
+          ],
+          "explanation": "Model OSI 7-layer membagi fungsi komunikasi jaringan.",
+          "subject": "Jaringan Komputer",
+          "difficulty": "sedang"
+        },
+        {
+          "id": "q4-short",
+          "quizId": "quiz-pas-rpl-01",
+          "type": "short_answer",
+          "text": "Tuliskan perintah dasar SQL (Structured Query Language) yang digunakan untuk mengekstrak atau menampilkan data dari tabel basis data relasional!",
+          "points": 15,
+          "shortAnswerKeywords": [
+            "SELECT",
+            "SELECT *",
+            "select"
+          ],
+          "explanation": "Perintah SELECT digunakan untuk mengambil baris dan kolom data dari tabel.",
+          "subject": "Basis Data",
+          "difficulty": "mudah"
+        },
+        {
+          "id": "q5-essay",
+          "quizId": "quiz-pas-rpl-01",
+          "type": "essay",
+          "text": "Sebuah sekolah sedang merancang sistem ujian online (CBT) skala besar. Jelaskan minimal 3 (tiga) strategi teknis dari sisi frontend, backend server, dan tata tertib pengawasan agar ujian berjalan lancar, anti-curang, dan tahan terhadap gangguan koneksi internet terputus!",
+          "points": 25,
+          "essayRubric": "Skor 25 jika mencakup: (1) Frontend autosave & lock screen, (2) Backend server verification, (3) Kiosk mode proktor.",
+          "explanation": "Aspek ketahanan CBT memerlukan autosave client-side dan server synchronization.",
+          "subject": "Arsitektur Sistem CBT",
+          "difficulty": "sulit"
+        },
+        {
+          "id": "q6-multimodal",
+          "quizId": "quiz-pas-rpl-01",
+          "type": "multimodal",
+          "text": "Perhatikan diagram infrastruktur jaringan komputer dan rekaman audio instruksi di bawah ini dengan saksama. Berdasarkan stimulus multimodal tersebut, analisislah jenis topologi jaringan yang paling tepat untuk menjamin ketersediaan tinggi (high availability) di ruang server sekolah!",
+          "points": 20,
+          "multimodalResponseType": "multiple_choice",
+          "media": [
+            {
+              "id": "m-img-1",
+              "type": "image",
+              "url": "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=1000&q=80",
+              "title": "Diagram Interkoneksi Server & Core Switch",
+              "caption": "Bagan arsitektur topologi redundan pusat data komputer sekolah."
+            },
+            {
+              "id": "m-aud-1",
+              "type": "audio",
+              "url": "https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg",
+              "title": "Audio Rekaman Diskusi Topologi",
+              "caption": "Simak penjelasan teknis mengenai keandalan rute paket data dan failover."
+            }
+          ],
+          "options": [
+            {
+              "id": "opt-m1",
+              "text": "Topologi Mesh Penuh (Full Mesh Redundant)"
+            },
+            {
+              "id": "opt-m2",
+              "text": "Topologi Bus Konvensional"
+            },
+            {
+              "id": "opt-m3",
+              "text": "Topologi Ring Tunggal Tanpa Backup"
+            },
+            {
+              "id": "opt-m4",
+              "text": "Topologi Daisy Chain Tanpa Failover"
+            }
+          ],
+          "correctAnswer": "opt-m1",
+          "explanation": "Topologi mesh penuh memiliki tautan redundan ganda antar perangkat.",
+          "subject": "Informatika & Rekayasa Perangkat Lunak",
+          "difficulty": "sedang"
+        }
+      ]
+    }
+  ],
+  "questionBank": [],
+  "teachers": [
+    {
+      "id": "teacher-admin-01",
+      "name": "Administrator Utama (Eskasaba)",
+      "email": "Admin@eskasaba.id",
+      "password": "123456789",
+      "role": "super_admin",
+      "subject": "Semua Mata Pelajaran / Proktor",
+      "createdAt": "2026-11-05T06:34:52.392Z"
+    },
+    {
+      "id": "teacher-02",
+      "name": "Drs. Budi Santoso, M.Kom",
+      "email": "budi.santoso@eskasaba.id",
+      "password": "123456789",
+      "role": "guru",
+      "subject": "Informatika & Pemrograman",
+      "createdAt": "2026-11-05T06:34:52.392Z"
+    }
+  ],
+  "sessions": [],
+  "lastUpdated": "2026-11-05T06:35:04.327Z"
+}

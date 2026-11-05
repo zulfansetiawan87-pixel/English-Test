@@ -4,6 +4,7 @@
  */
 
 import { Quiz, Question, StudentSession, StudentAnswer, ViolationRecord, TeacherAccount } from '../types';
+import { cloudSync } from './cloudSync';
 
 const STORAGE_KEY = 'secureexam_cbt_data_v2';
 const CONFIG_KEY = 'secureexam_supabase_config_v1';
@@ -416,19 +417,26 @@ class StorageService {
 
   private initData() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        this.quizzes = parsed.quizzes || INITIAL_QUIZZES;
-        this.sessions = parsed.sessions || INITIAL_SESSIONS;
-        this.questionBank = parsed.questionBank || this.extractBankFromQuizzes(this.quizzes);
-        this.teachers = parsed.teachers && parsed.teachers.length > 0 ? parsed.teachers : INITIAL_TEACHERS;
-        
-        // Pastikan akun utama Admin@eskasaba.id selalu ada
-        if (!this.teachers.some(t => t.email.toLowerCase() === 'admin@eskasaba.id')) {
-          this.teachers.unshift(INITIAL_TEACHERS[0]);
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          this.quizzes = parsed.quizzes || INITIAL_QUIZZES;
+          this.sessions = parsed.sessions || INITIAL_SESSIONS;
+          this.questionBank = parsed.questionBank || this.extractBankFromQuizzes(this.quizzes);
+          this.teachers = parsed.teachers && parsed.teachers.length > 0 ? parsed.teachers : INITIAL_TEACHERS;
+          
+          // Pastikan akun utama Admin@eskasaba.id selalu ada
+          if (!this.teachers.some(t => t.email.toLowerCase() === 'admin@eskasaba.id')) {
+            this.teachers.unshift(INITIAL_TEACHERS[0]);
+          }
+
+          // Trigger background pull from cloud server
+          setTimeout(() => {
+            cloudSync.pullFromCloud().catch(() => {});
+          }, 50);
+          return;
         }
-        return;
       }
     } catch (e) {
       console.warn('Failed to parse saved CBT data, using seeds', e);
@@ -438,6 +446,81 @@ class StorageService {
     this.questionBank = this.extractBankFromQuizzes(INITIAL_QUIZZES);
     this.teachers = INITIAL_TEACHERS;
     this.persist();
+
+    // Trigger initial pull from cloud server
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        cloudSync.pullFromCloud().catch(() => {});
+      }, 50);
+    }
+  }
+
+  public mergeCloudData(cloudData: {
+    quizzes?: Quiz[];
+    questionBank?: Question[];
+    teachers?: TeacherAccount[];
+    sessions?: StudentSession[];
+  }): boolean {
+    let hasChanges = false;
+
+    if (Array.isArray(cloudData.quizzes) && cloudData.quizzes.length > 0) {
+      cloudData.quizzes.forEach(cloudQuiz => {
+        const localIdx = this.quizzes.findIndex(lq => lq.id === cloudQuiz.id);
+        if (localIdx >= 0) {
+          if (JSON.stringify(this.quizzes[localIdx]) !== JSON.stringify(cloudQuiz)) {
+            this.quizzes[localIdx] = cloudQuiz;
+            hasChanges = true;
+          }
+        } else {
+          this.quizzes.unshift(cloudQuiz);
+          hasChanges = true;
+        }
+      });
+    }
+
+    if (Array.isArray(cloudData.questionBank) && cloudData.questionBank.length > 0) {
+      cloudData.questionBank.forEach(cq => {
+        if (!this.questionBank.some(lq => lq.id === cq.id)) {
+          this.questionBank.push(cq);
+          hasChanges = true;
+        }
+      });
+    }
+
+    if (Array.isArray(cloudData.teachers) && cloudData.teachers.length > 0) {
+      cloudData.teachers.forEach(ct => {
+        const localIdx = this.teachers.findIndex(lt => lt.email.toLowerCase() === ct.email.toLowerCase());
+        if (localIdx >= 0) {
+          if (JSON.stringify(this.teachers[localIdx]) !== JSON.stringify(ct)) {
+            this.teachers[localIdx] = ct;
+            hasChanges = true;
+          }
+        } else {
+          this.teachers.push(ct);
+          hasChanges = true;
+        }
+      });
+    }
+
+    if (Array.isArray(cloudData.sessions) && cloudData.sessions.length > 0) {
+      cloudData.sessions.forEach(cs => {
+        const localIdx = this.sessions.findIndex(ls => ls.id === cs.id);
+        if (localIdx >= 0) {
+          if (cs.status === 'submitted' || cs.status === 'force_submitted' || (cs.violations && cs.violations.length > this.sessions[localIdx].violations.length)) {
+            this.sessions[localIdx] = cs;
+            hasChanges = true;
+          }
+        } else {
+          this.sessions.push(cs);
+          hasChanges = true;
+        }
+      });
+    }
+
+    if (hasChanges) {
+      this.persist();
+    }
+    return hasChanges;
   }
 
   private extractBankFromQuizzes(quizzes: Quiz[]): Question[] {
@@ -452,15 +535,17 @@ class StorageService {
 
   public persist() {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          quizzes: this.quizzes,
-          sessions: this.sessions,
-          questionBank: this.questionBank,
-          teachers: this.teachers,
-        })
-      );
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            quizzes: this.quizzes,
+            sessions: this.sessions,
+            questionBank: this.questionBank,
+            teachers: this.teachers,
+          })
+        );
+      }
     } catch (e) {
       console.error('Storage quota or error', e);
     }
@@ -483,6 +568,10 @@ class StorageService {
       this.quizzes.unshift(quiz);
     }
     this.persist();
+
+    // Push to Cloud Server
+    cloudSync.pushQuiz(quiz).catch(err => console.warn('Cloud sync push quiz failed:', err));
+
     return quiz;
   }
 
@@ -491,6 +580,7 @@ class StorageService {
     this.quizzes = this.quizzes.filter(q => q.id !== id);
     if (this.quizzes.length !== initialLen) {
       this.persist();
+      cloudSync.deleteQuiz(id).catch(err => console.warn('Cloud sync delete quiz failed:', err));
       return true;
     }
     return false;
@@ -509,12 +599,18 @@ class StorageService {
       this.questionBank.unshift(question);
     }
     this.persist();
+
+    cloudSync.pushQuestionToBank(question).catch(err => console.warn('Cloud sync push question failed:', err));
+
     return question;
   }
 
   public deleteQuestionFromBank(id: string): boolean {
     this.questionBank = this.questionBank.filter(q => q.id !== id);
     this.persist();
+
+    cloudSync.deleteQuestionFromBank(id).catch(err => console.warn('Cloud sync delete question failed:', err));
+
     return true;
   }
 
@@ -539,6 +635,9 @@ class StorageService {
       this.sessions.unshift(session);
     }
     this.persist();
+
+    cloudSync.pushSession(session).catch(err => console.warn('Cloud sync push session failed:', err));
+
     return session;
   }
 
@@ -726,6 +825,9 @@ class StorageService {
       this.teachers.push(teacher);
     }
     this.persist();
+
+    cloudSync.pushTeacher(teacher).catch(err => console.warn('Cloud sync push teacher failed:', err));
+
     return teacher;
   }
 
@@ -738,6 +840,7 @@ class StorageService {
     this.teachers = this.teachers.filter(t => t.id !== id);
     if (this.teachers.length !== initialLen) {
       this.persist();
+      cloudSync.deleteTeacher(id).catch(err => console.warn('Cloud sync delete teacher failed:', err));
       return true;
     }
     return false;
@@ -764,6 +867,8 @@ class StorageService {
     this.questionBank = this.extractBankFromQuizzes(INITIAL_QUIZZES);
     this.teachers = INITIAL_TEACHERS;
     this.persist();
+
+    fetch('/api/reset-data', { method: 'POST' }).catch(() => {});
   }
 }
 

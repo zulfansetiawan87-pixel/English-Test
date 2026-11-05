@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Quiz, StudentSession } from '../../types';
 import { db } from '../../services/db';
+import { cloudSync, CloudSyncStatus } from '../../services/cloudSync';
 import { QuizManager } from './QuizManager';
 import { QuestionBank } from './QuestionBank';
 import { LiveProctoring } from './LiveProctoring';
@@ -29,7 +30,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Play,
-  UserPlus
+  UserPlus,
+  RefreshCw,
+  Cloud
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -47,6 +50,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const [quizzes, setQuizzes] = useState<Quiz[]>(db.getQuizzes());
   const [sessions, setSessions] = useState<StudentSession[]>(db.getSessions());
+  const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>({
+    isOnline: true,
+    isSyncing: false,
+    lastSyncedAt: null,
+    lastError: null,
+  });
 
   // Modals state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -57,6 +66,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setQuizzes(db.getQuizzes());
     setSessions(db.getSessions());
   };
+
+  useEffect(() => {
+    const unsubStatus = cloudSync.subscribeStatus((st) => setSyncStatus(st));
+    const unsubData = cloudSync.subscribeDataChange(() => {
+      refreshData();
+    });
+
+    // Initial pull
+    cloudSync.pullFromCloud().then(() => refreshData());
+
+    return () => {
+      unsubStatus();
+      unsubData();
+    };
+  }, []);
 
   const handleOpenImport = (quiz?: Quiz) => {
     setSelectedTargetQuiz(quiz || null);
@@ -94,6 +118,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {/* Quick Action Buttons */}
           <div className="flex items-center gap-2">
+            {/* Cloud Status Indicator & Sync Now Button */}
+            <button
+              onClick={() => {
+                cloudSync.pullFromCloud().then(() => refreshData());
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition active:scale-95 ${
+                syncStatus.isSyncing
+                  ? 'bg-blue-950/80 text-blue-300 border-blue-600/70'
+                  : syncStatus.lastError
+                  ? 'bg-amber-950/50 text-amber-300 border-amber-800/60 hover:bg-amber-900/40'
+                  : 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900/40'
+              }`}
+              title={
+                syncStatus.lastSyncedAt
+                  ? `Tersimpan di Cloud Online. Sinkronisasi terakhir: ${syncStatus.lastSyncedAt.toLocaleTimeString()}. Klik untuk sinkronisasi manual sekarang.`
+                  : 'Klik untuk sinkronkan data soal dengan cloud server'
+              }
+            >
+              <Cloud className={`w-3.5 h-3.5 ${syncStatus.isSyncing ? 'animate-pulse text-blue-400' : 'text-emerald-400'}`} />
+              <span className="hidden sm:inline">
+                {syncStatus.isSyncing ? 'Menyinkronkan...' : 'Cloud Tersimpan'}
+              </span>
+              <RefreshCw className={`w-3 h-3 ml-0.5 ${syncStatus.isSyncing ? 'animate-spin' : 'opacity-70'}`} />
+            </button>
+
             <button
               onClick={() => handleOpenImport()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-900/40 transition active:scale-95"

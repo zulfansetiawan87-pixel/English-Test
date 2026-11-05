@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { db, SupabaseConfig } from '../../services/db';
+import { cloudSync } from '../../services/cloudSync';
 import { SUPABASE_SQL_SCHEMA } from '../../services/supabaseSchema';
 import {
   ShieldCheck,
@@ -16,7 +17,11 @@ import {
   RotateCcw,
   Smartphone,
   ExternalLink,
-  Lock
+  Lock,
+  Cloud,
+  RefreshCw,
+  Download,
+  Upload
 } from 'lucide-react';
 
 interface SecuritySettingsProps {
@@ -32,6 +37,86 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({
   const [copiedSql, setCopiedSql] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [cloudMessage, setCloudMessage] = useState<string | null>(null);
+  const [isCloudLoading, setIsCloudLoading] = useState(false);
+
+  const handleForcePushToCloud = async () => {
+    setIsCloudLoading(true);
+    setCloudMessage('Mengunggah seluruh data kuis & soal ke cloud server...');
+    const ok = await cloudSync.pushFullState({
+      quizzes: db.getQuizzes(),
+      questionBank: db.getQuestionBank(),
+      teachers: db.getTeachers(),
+      sessions: db.getSessions(),
+    });
+    setIsCloudLoading(false);
+    if (ok) {
+      setCloudMessage('✅ Seluruh data kuis & soal berhasil diunggah dan tersimpan online!');
+    } else {
+      setCloudMessage('⚠️ Gagal mengunggah ke cloud server. Periksa koneksi internet.');
+    }
+    setTimeout(() => setCloudMessage(null), 4000);
+  };
+
+  const handleForcePullFromCloud = async () => {
+    setIsCloudLoading(true);
+    setCloudMessage('Mengambil data terbaru dari cloud server...');
+    const ok = await cloudSync.pullFromCloud();
+    setIsCloudLoading(false);
+    if (ok) {
+      onDataReset();
+      setCloudMessage('✅ Data terbaru dari cloud server berhasil disinkronkan ke perangkat ini!');
+    } else {
+      setCloudMessage('⚠️ Tidak dapat mengambil data dari cloud server.');
+    }
+    setTimeout(() => setCloudMessage(null), 4000);
+  };
+
+  const handleDownloadBackup = () => {
+    const data = {
+      quizzes: db.getQuizzes(),
+      questionBank: db.getQuestionBank(),
+      teachers: db.getTeachers(),
+      sessions: db.getSessions(),
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_cbt_secureexam_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestoreBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (parsed.quizzes) {
+          db.mergeCloudData(parsed);
+          await cloudSync.pushFullState({
+            quizzes: db.getQuizzes(),
+            questionBank: db.getQuestionBank(),
+            teachers: db.getTeachers(),
+            sessions: db.getSessions(),
+          });
+          onDataReset();
+          alert('Data backup berhasil di-restore dan disinkronkan ke cloud!');
+        } else {
+          alert('Format file backup JSON tidak valid.');
+        }
+      } catch (err: any) {
+        alert('Gagal membaca file backup: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +187,76 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({
           <span>Buka Panduan Kiosk & APK</span>
           <ExternalLink className="w-3.5 h-3.5" />
         </button>
+      </div>
+
+      {/* Cloud Server Synchronization & Multi-Device Card */}
+      <div className="bg-slate-900 border border-blue-500/30 rounded-2xl p-5 space-y-4 shadow-xl shadow-blue-950/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
+              <Cloud className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>Sinkronisasi Cloud Server Otomatis (Multi-Device)</span>
+                <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-mono">
+                  Online Active
+                </span>
+              </h4>
+              <p className="text-xs text-slate-400">
+                Semua butir soal, kuis, akun guru, dan kunci jawaban yang dibuat otomatis tersimpan di cloud server dan dapat diakses dari perangkat mana pun secara langsung.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {cloudMessage && (
+          <div className="p-3 rounded-xl bg-blue-950/60 border border-blue-700/60 text-blue-200 text-xs font-medium">
+            {cloudMessage}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1 text-xs">
+          <button
+            type="button"
+            onClick={handleForcePullFromCloud}
+            disabled={isCloudLoading}
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${isCloudLoading ? 'animate-spin' : ''}`} />
+            <span>Tarik Data Cloud (Pull)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleForcePushToCloud}
+            disabled={isCloudLoading}
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            <Cloud className="w-4 h-4 text-emerald-400" />
+            <span>Unggah ke Cloud (Push)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDownloadBackup}
+            className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition active:scale-95 cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-amber-400" />
+            <span>Download Backup JSON</span>
+          </button>
+
+          <label className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold transition active:scale-95 cursor-pointer">
+            <Upload className="w-4 h-4 text-indigo-400" />
+            <span>Restore Backup JSON</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleRestoreBackup}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Supabase Connection Setup */}

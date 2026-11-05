@@ -93,7 +93,23 @@ export async function fetchTeachersList(): Promise<{
     }
   }
 
-  // Fallback to reactive local storage
+  // Fallback to cloud server or reactive local storage
+  try {
+    const res = await fetch('/api/teachers');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && Array.isArray(json.teachers) && json.teachers.length > 0) {
+        json.teachers.forEach((t: any) => db.saveTeacher(t));
+        return {
+          teachers: db.getTeachers(),
+          source: 'supabase',
+        };
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
   return {
     teachers: db.getTeachers(),
     source: 'local',

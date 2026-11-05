@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Quiz, StudentSession } from '../../types';
 import { db } from '../../services/db';
+import { cloudSync } from '../../services/cloudSync';
 import { PWAInstallButton } from '../PWAInstallButton';
 import {
   Shield,
@@ -40,7 +41,17 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({
   const [pledgeChecked, setPledgeChecked] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const quizzes = useMemo(() => db.getQuizzes().filter(q => q.status === 'active'), []);
+  const [quizzes, setQuizzes] = useState<Quiz[]>(() => db.getQuizzes().filter(q => q.status === 'active'));
+
+  useEffect(() => {
+    const unsub = cloudSync.subscribeDataChange(() => {
+      setQuizzes(db.getQuizzes().filter(q => q.status === 'active'));
+    });
+    cloudSync.pullFromCloud().then(() => {
+      setQuizzes(db.getQuizzes().filter(q => q.status === 'active'));
+    });
+    return () => unsub();
+  }, []);
 
   // Ambil daftar kelas secara dinamis dari kuis aktif
   const classList = useMemo(() => {

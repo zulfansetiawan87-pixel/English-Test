@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Question, Quiz, QuestionType } from '../../types';
 import { db } from '../../services/db';
+import { cloudSync } from '../../services/cloudSync';
 import {
   BookOpen,
   Search,
@@ -39,6 +40,13 @@ export const QuestionBank: React.FC<QuestionBankProps> = ({
   const [targetQuizModal, setTargetQuizModal] = useState<Question | null>(null);
   const [selectedTargetQuizId, setSelectedTargetQuizId] = useState<string>(quizzes[0]?.id || '');
   const [copySuccess, setCopySuccess] = useState(false);
+
+  useEffect(() => {
+    const unsub = cloudSync.subscribeDataChange(() => {
+      setBankQuestions(db.getQuestionBank());
+    });
+    return () => unsub();
+  }, []);
 
   const filteredQuestions = useMemo(() => {
     return bankQuestions.filter(q => {
